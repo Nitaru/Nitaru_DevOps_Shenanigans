@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: app
+    static_configs:
+      - targets: ["app-blue:5000"]
+        labels: { slot: blue }
+      - targets: ["app-green:5000"]
+        labels: { slot: green }

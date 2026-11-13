@@ -1,0 +1,68 @@
+name: Blue-Green Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "blue-green-deployment/**"
+      - ".github/workflows/blue-green-deployment.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: blue-green-deploy
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: blue-green-deployment
+
+jobs:
+  test:
+    name: Test zero-downtime switch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy previous version
+        run: ./scripts/deploy.sh ci-old
+
+      - name: Deploy this commit under load
+        run: ./scripts/zero-downtime-test.sh "${GITHUB_SHA::7}"
+
+      - name: Test rollback
+        run: |
+          ./scripts/rollback.sh
+          curl -fsS localhost:8080/version | grep '"version":"ci-old"'
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose --env-file .deploy-state logs --tail 50
+
+  deploy:
+    name: Deploy to server
+    needs: test
+    runs-on: ubuntu-latest
+    # Only runs once a server is configured in repo settings:
+    #   variables: DEPLOY_HOST, DEPLOY_USER   secrets: DEPLOY_SSH_KEY
+    if: github.ref == 'refs/heads/main' && vars.DEPLOY_HOST != ''
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ vars.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copy project to server
+        run: |
+          rsync -az --delete \
+            --exclude .deploy-state --exclude 'nginx/upstream/*.conf' \
+            ./ "${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:~/blue-green-deployment/"
+
+      - name: Run blue-green deployment
+        run: |
+          ssh "${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}" \
+            "cd ~/blue-green-deployment && ./scripts/deploy.sh ${GITHUB_SHA::7}"

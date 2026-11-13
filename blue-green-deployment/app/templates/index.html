@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Blue-Green Demo</title>
+  <style>
+    body { margin: 0; height: 100vh; display: grid; place-items: center;
+           font-family: system-ui, sans-serif; color: white;
+           background: {{ '#2563eb' if color == 'blue' else '#16a34a' }}; }
+    .card { text-align: center; }
+    h1 { font-size: 3rem; margin: 0 0 8px; }
+    p { margin: 4px; opacity: .9; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Version {{ version }}</h1>
+    <p>Served by the <strong>{{ color }}</strong> environment ({{ host }})</p>
+    <p>Total visits: {{ visits }}</p>
+  </div>
+</body>
+</html>
