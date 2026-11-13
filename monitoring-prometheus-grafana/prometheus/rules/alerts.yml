@@ -1,0 +1,73 @@
+groups:
+  - name: availability
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} ({{ $labels.instance }}) is down"
+          description: "Prometheus has not been able to scrape {{ $labels.instance }} for over 1 minute."
+
+      # With Docker service discovery a stopped container vanishes from the target
+      # list instead of reporting up == 0, so also alert when it's missing entirely.
+      - alert: ShopApiMissing
+        expr: absent(up{job="app"})
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The shop API is not running (no target discovered)"
+
+  - name: shop
+    rules:
+      - alert: HighErrorRate
+        expr: job:http_errors:ratio_rate5m > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} error rate is {{ $value | humanizePercentage }}"
+
+      - alert: HighLatency
+        expr: job:http_request_duration_seconds:p95_5m > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} p95 latency is {{ $value | humanizeDuration }}"
+
+      - alert: OrderBacklogGrowing
+        expr: shop_orders_pending > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} orders are waiting to be fulfilled"
+
+  - name: host
+    rules:
+      - alert: HighCpuUsage
+        expr: instance:node_cpu_utilisation:ratio > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU usage on {{ $labels.instance }} is {{ $value | humanizePercentage }}"
+
+      - alert: HighMemoryUsage
+        expr: instance:node_memory_utilisation:ratio > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory usage on {{ $labels.instance }} is {{ $value | humanizePercentage }}"
+
+      - alert: DiskAlmostFull
+        expr: instance:node_filesystem_utilisation:ratio > 0.9
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value | humanizePercentage }} full"

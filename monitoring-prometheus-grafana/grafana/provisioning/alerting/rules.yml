@@ -1,0 +1,62 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: shop
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: shop-high-error-rate
+        title: Shop API error rate above 5%
+        condition: C
+        for: 2m
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              refId: A
+              expr: job:http_errors:ratio_rate5m{job="app"}
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0.05] }
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+        annotations:
+          summary: Shop API is returning too many 5xx errors
+
+      - uid: shop-api-down
+        title: Shop API down
+        condition: C
+        for: 1m
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              refId: A
+              expr: sum(up{job="app"})
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+        # No data means the container is gone from service discovery, i.e. down
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+        annotations:
+          summary: The shop API is down or not running

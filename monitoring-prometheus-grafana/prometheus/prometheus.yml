@@ -1,0 +1,39 @@
+global:
+  scrape_interval: 15s      # how often to scrape targets
+  evaluation_interval: 15s  # how often to evaluate recording/alerting rules
+  scrape_timeout: 10s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Service discovery: any container with the label prometheus.scrape=true is
+  # scraped automatically, on the port given in its prometheus.port label.
+  # Start a new labelled container and it shows up without touching this file.
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+        filters:
+          - name: label
+            values: ["prometheus.scrape=true"]
+    relabel_configs:
+      # One target per container, on the monitoring network only
+      - source_labels: [__meta_docker_network_name]
+        regex: monitoring_default
+        action: keep
+      - source_labels: [__meta_docker_network_ip, __meta_docker_container_label_prometheus_port]
+        separator: ":"
+        target_label: __address__
+      - source_labels: [__meta_docker_container_label_prometheus_path]
+        regex: (.+)
+        target_label: __metrics_path__
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: job
+      - source_labels: [__meta_docker_container_name]
+        regex: /(.*)
+        target_label: instance
