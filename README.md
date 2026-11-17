@@ -30,7 +30,7 @@ Each one also ships a test that builds the stack and checks what its README clai
 | Project | Test | Checks |
 |---|---|---|
 | service-discovery | `scripts/test.sh` | 19: discovery, load balancing, stop, kill and Consul-down handling |
-| multi-service-docker | `scripts/test.sh` | 28: caching, network isolation, secrets, non-root, log rotation, persistence |
+| multi-service-docker | `scripts/test.sh` | 30: caching, network isolation, secrets, non-root, log rotation, persistence |
 | monitoring-prometheus-grafana | `scripts/test.sh` | 34: rule unit tests, discovery, Loki, Grafana provisioning, a real alert firing and resolving |
 | blue-green-deployment | `scripts/zero-downtime-test.sh` | requests during a deployment, then a rollback |
 

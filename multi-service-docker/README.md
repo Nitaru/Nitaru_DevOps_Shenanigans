@@ -68,7 +68,7 @@ docker compose logs -f api             # JSON request logs
 ## Test it
 
 ```bash
-scripts/test.sh          # 28 checks on its own project name and port (18081), about 80 seconds
+scripts/test.sh          # 30 checks on its own project name and port (18081), about 80 seconds
 KEEP=1 scripts/test.sh   # leave the stack running afterwards
 ```
 
@@ -80,13 +80,23 @@ The script builds everything, then checks the claims made above rather than only
 | Caching | a read after a write comes from the database, the next one from Redis, and a write invalidates the cache again |
 | API | invalid input (empty note, malformed id) is rejected, an unknown id returns 404, a delete returns 204 |
 | Isolation | only the proxy publishes a port; Mongo is unreachable from the host; Mongo cannot reach the internet but can still reach Redis |
-| Secrets | the passwords are in no container configuration, no log, and no image layer, and are mounted as files |
+| Secrets | the passwords are in no container configuration, no log, and no image layer, are mounted as files, and the directory holding them is private (see below) |
 | Users, logs | the API and web containers run as non-root; every service rotates logs at 10 MB, 3 files |
 | Persistence | after a restart of the API the proxy finds it again, and a note survives `down` followed by `up` |
 
 `PROXY_PORT` changes the published port (default 8080).
 
 ## Things I checked, and what I found
+
+- **CI found a bug that never showed on my Mac: the stack did not start on Linux.** `generate-secrets.sh` made the
+  password files `chmod 600`. Compose bind-mounts a secret file with the host file's owner and mode, and the
+  containers read it as non-root users (Mongo as uid 999, the API as uid 1000), so on the GitHub runner Mongo
+  failed with `/run/secrets/mongo_password: Permission denied`. Docker Desktop on macOS hides this, a Linux server
+  does not, and a Linux server is what this README recommends. Compose has no `uid` or `mode` option for file
+  secrets outside Swarm, so the fix is: files `644`, inside a directory that is `700`. Other users on the host
+  cannot list the directory, while the containers reach the files through the bind mount. The test asserts both
+  modes. The trade-off is real: anyone who can already read the directory (you, and root) can read the files,
+  and so can any process running as you.
 
 - **Every "is not present" check has a control.** A check that says "no secrets found" is only meaningful if the
   scan can find one, so the test first feeds it a known password and requires it to be detected. The network

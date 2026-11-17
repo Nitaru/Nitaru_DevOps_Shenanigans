@@ -89,6 +89,13 @@ check "control: the secret scan does detect a password when one is present" leak
 check "the passwords are not in any container's configuration" inspect_clean
 check "the passwords are not in the container logs" logs_clean
 check "the passwords are not in the image layers" history_clean
+# Linux reads bind-mounted secrets with the host file's mode, so the files must be readable by the
+# containers' non-root users, and the directory is what keeps other host users out.
+mode_of() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
+secrets_dir_private() { [[ $(mode_of secrets) == 700 ]]; }
+secrets_readable_by_containers() { [[ $(mode_of secrets/mongo_password.txt) == 644 && $(mode_of secrets/redis_password.txt) == 644 ]]; }
+check "the secrets directory is private to the owner on the host (700)" secrets_dir_private
+check "the secret files are readable by the containers' non-root users (644)" secrets_readable_by_containers
 check "the secrets are mounted as files in /run/secrets" secrets_mounted
 check "the API runs as a non-root user"         nonroot api
 check "the web container runs as a non-root user" nonroot web
