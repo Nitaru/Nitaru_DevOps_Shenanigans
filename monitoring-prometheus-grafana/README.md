@@ -93,6 +93,47 @@ docker compose stop app
 docker compose start app
 ```
 
+## Test it
+
+```bash
+scripts/test.sh          # 34 checks, about 4 minutes once the images are pulled (it waits for real alerts to fire)
+KEEP=1 scripts/test.sh   # leave the stack running afterwards
+```
+
+It first unit-tests the rules with `promtool` (no stack needed), then starts the stack and checks it end to end:
+
+| Area | What is checked |
+|---|---|
+| Rules | `prometheus.yml` and the rule files are valid; [`prometheus/tests/rules.test.yml`](prometheus/tests/rules.test.yml) feeds synthetic series to every alert and recording rule and checks what fires, including cases that must **not** fire |
+| Discovery | exactly the six expected targets are up, with none hard-coded; a container started with the two labels is scraped within 45 s, and disappears again within 45 s of being removed |
+| Metrics | request histograms, the recording rules, the nginx and Redis exporters, and the custom exporter (including `shop_revenue_dollars_total > 0`, so it is reading real data) |
+| Logs | Promtail ships the app's and nginx's logs to Loki, the JSON `level` becomes a label, and Loki's effective retention is 7 days |
+| Grafana | anonymous access is refused, both data sources are healthy, both dashboards, both alert rules and the email contact point are provisioned |
+| Users | `create-grafana-user.sh` creates a user who can log in as a Viewer and who cannot create users; a wrong password is rejected |
+| Alerting | the app is stopped; `ShopApiMissing` fires in Prometheus and "Shop API down" fires in Grafana; both resolve after it is started again |
+
+The compose project has to be named `monitoring` (Prometheus and Promtail select that network and project),
+so the test cannot run next to a copy of the stack you already started. It refuses to delete an existing
+`monitoring` stack or its volumes unless you pass `FORCE=1`. It uses its own ports (18082, 19090, 13000);
+`NGINX_PORT`, `PROMETHEUS_PORT` and `GRAFANA_PORT` change them for normal use too.
+
+## Things I checked, and what I got wrong
+
+- **The first live run had 8 failures, and all 8 were mistakes in my test, not in the stack.** The dashboard
+  search had an unencoded space, a PromQL `and` joined metrics from two different exporters (so it could
+  never match), Loki log queries must be range queries and I sent an instant one, and I guessed
+  `shop_revenue_dollars` when Prometheus counters get a `_total` suffix. I confirmed each against the running
+  stack before changing the test, and checked that the dashboards and rules already use the correct names.
+- **`--storage.tsdb.retention.size=5GB` is reported as `5GiB`.** Prometheus normalises the unit, so the test
+  asserts what Prometheus actually reports.
+- **The alert design was worth proving.** With Docker discovery a stopped container disappears from the
+  target list instead of reporting `up == 0`, so `TargetDown` alone would never fire. The test stops the
+  app and requires `ShopApiMissing` to fire, then requires it to resolve.
+- **The rule tests were checked against a sabotaged copy** (a wrong expected value and a wrong evaluation
+  time), which produced the expected failures.
+- **Not tested:** sending the alert emails (no SMTP server is configured), the Slack example, and the
+  `HighMemoryUsage` and `DiskAlmostFull` rules, which are not covered by a unit test.
+
 ## Clean up
 
 ```bash

@@ -1,0 +1,114 @@
+# Unit tests for the recording and alerting rules. Run with scripts/test.sh (promtool), no stack needed.
+rule_files:
+  - ../rules/recording.yml
+  - ../rules/alerts.yml
+evaluation_interval: 30s
+
+tests:
+  - name: a target that stops answering raises TargetDown after a minute
+    interval: 30s
+    input_series:
+      - series: 'up{job="app", instance="app"}'
+        values: '1 1 0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: TargetDown
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: TargetDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: app, instance: app }
+            exp_annotations:
+              summary: "app (app) is down"
+              description: "Prometheus has not been able to scrape app for over 1 minute."
+
+  - name: with Docker discovery a stopped container disappears, and ShopApiMissing catches it
+    interval: 30s
+    input_series: []        # no up{job="app"} series at all
+    alert_rule_test:
+      - eval_time: 30s
+        alertname: ShopApiMissing
+        exp_alerts: []
+      - eval_time: 2m
+        alertname: ShopApiMissing
+        exp_alerts:
+          - exp_labels: { severity: critical, job: app }
+            exp_annotations:
+              summary: "The shop API is not running (no target discovered)"
+
+  - name: the API being up does not raise ShopApiMissing
+    interval: 30s
+    input_series:
+      - series: 'up{job="app", instance="app"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: ShopApiMissing
+        exp_alerts: []
+
+  - name: 10 percent 5xx raises HighErrorRate, 1 percent does not
+    interval: 30s
+    input_series:
+      - series: 'http_request_duration_seconds_count{job="app", route="/api/orders", status="201"}'
+        values: '0+90x30'
+      - series: 'http_request_duration_seconds_count{job="app", route="/api/orders", status="502"}'
+        values: '0+10x30'
+      - series: 'http_request_duration_seconds_count{job="quiet", route="/api/orders", status="201"}'
+        values: '0+99x30'
+      - series: 'http_request_duration_seconds_count{job="quiet", route="/api/orders", status="502"}'
+        values: '0+1x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels: { severity: warning, job: app }
+            exp_annotations:
+              summary: "app error rate is 10%"
+
+  - name: a p95 latency above 500 ms raises HighLatency
+    interval: 30s
+    input_series:
+      - series: 'http_request_duration_seconds_bucket{job="app", le="0.5"}'
+        values: '0+0x40'
+      - series: 'http_request_duration_seconds_bucket{job="app", le="1"}'
+        values: '0+100x40'
+      - series: 'http_request_duration_seconds_bucket{job="app", le="+Inf"}'
+        values: '0+100x40'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HighLatency
+        exp_alerts:
+          - exp_labels: { severity: warning, job: app }
+            exp_annotations:
+              summary: "app p95 latency is 975ms"
+
+  - name: a backlog over 100 raises OrderBacklogGrowing, a smaller one does not
+    interval: 30s
+    input_series:
+      - series: 'shop_orders_pending{job="shop-exporter", instance="big"}'
+        values: '150x30'
+      - series: 'shop_orders_pending{job="shop-exporter", instance="small"}'
+        values: '50x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: OrderBacklogGrowing
+        exp_alerts:
+          - exp_labels: { severity: warning, job: shop-exporter, instance: big }
+            exp_annotations:
+              summary: "150 orders are waiting to be fulfilled"
+
+  - name: a CPU that is idle only 10 percent of the time raises HighCpuUsage after 10 minutes
+    interval: 30s
+    input_series:
+      - series: 'node_cpu_seconds_total{instance="node", cpu="0", mode="idle"}'
+        values: '0+3x60'     # 3 idle seconds per 30 s: 10 percent idle, 90 percent busy
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: HighCpuUsage
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: HighCpuUsage
+        exp_alerts:
+          - exp_labels: { severity: warning, instance: node }
+            exp_annotations:
+              summary: "CPU usage on node is 90%"

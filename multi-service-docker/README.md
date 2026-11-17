@@ -65,6 +65,45 @@ docker compose ps                      # all services show (healthy)
 docker compose logs -f api             # JSON request logs
 ```
 
+## Test it
+
+```bash
+scripts/test.sh          # 28 checks on its own project name and port (18081), about 80 seconds
+KEEP=1 scripts/test.sh   # leave the stack running afterwards
+```
+
+The script builds everything, then checks the claims made above rather than only that the containers start:
+
+| Area | What is checked |
+|---|---|
+| Health | all five services report healthy; the web app is served; the API reaches Mongo and Redis through the proxy |
+| Caching | a read after a write comes from the database, the next one from Redis, and a write invalidates the cache again |
+| API | invalid input (empty note, malformed id) is rejected, an unknown id returns 404, a delete returns 204 |
+| Isolation | only the proxy publishes a port; Mongo is unreachable from the host; Mongo cannot reach the internet but can still reach Redis |
+| Secrets | the passwords are in no container configuration, no log, and no image layer, and are mounted as files |
+| Users, logs | the API and web containers run as non-root; every service rotates logs at 10 MB, 3 files |
+| Persistence | after a restart of the API the proxy finds it again, and a note survives `down` followed by `up` |
+
+`PROXY_PORT` changes the published port (default 8080).
+
+## Things I checked, and what I found
+
+- **Every "is not present" check has a control.** A check that says "no secrets found" is only meaningful if the
+  scan can find one, so the test first feeds it a known password and requires it to be detected. The network
+  check likewise first proves that two containers on the backend network can reach each other, so a failed
+  connection to the internet means isolation and not a broken probe.
+- **I ran a sabotaged copy of the script** with two wrong expectations to confirm that failures are reported.
+  It reported both.
+- **The "75MB instead of 200MB+" claim holds, but depends on how it is measured.** `docker images` shows
+  76 MB for the web image against 199 MB for its build base. `docker image inspect` shows 22 MB for the same
+  image because it reports compressed size. The test uses the `docker images` figure and requires the web
+  image to be under half the size of its base.
+- **Only the custom images are checked for non-root.** The API and web containers run as non-root. In the
+  official `mongo` image, `docker exec` reports uid 0, and I did not check whether `mongod` itself drops
+  privileges, nor what the Redis and nginx processes run as, so I make no claim about them.
+- **The proxy re-resolves the API after it restarts.** `nginx.conf` uses Docker's resolver with a 10-second
+  cache and variables in `proxy_pass`, and the test restarts the API and requires the proxy to find it again.
+
 ## Other commands
 
 ```bash

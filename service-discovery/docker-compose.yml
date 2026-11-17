@@ -3,8 +3,8 @@ services:
     image: hashicorp/consul:1.19
     command: agent -dev -client=0.0.0.0 -ui
     ports:
-      - "8500:8500"   # HTTP API + UI
-      - "8600:8600/udp" # DNS interface
+      - "${CONSUL_PORT:-8500}:8500"   # HTTP API + UI
+      - "${CONSUL_DNS_PORT:-8600}:8600/udp" # DNS interface
 
   service-a:
     build: ./services
@@ -30,5 +30,5 @@ services:
   gateway:
     build: ./gateway
     ports:
-      - "8080:8080"
+      - "${GATEWAY_PORT:-8080}:8080"
     depends_on: [consul]
