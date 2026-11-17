@@ -21,6 +21,7 @@ log "Active: $ACTIVE ($(version_of "$ACTIVE")) -> deploying $VERSION to $TARGET"
 log "Building bluegreen-app:$VERSION"
 docker build -q -t "bluegreen-app:$VERSION" --build-arg "APP_VERSION=$VERSION" "$ROOT_DIR/app" >/dev/null
 
+# shellcheck disable=SC2034  # these are read by save_state in lib.sh and written to the state file
 if [[ "$TARGET" == "blue" ]]; then BLUE_VERSION="$VERSION"; else GREEN_VERSION="$VERSION"; fi
 save_state
 

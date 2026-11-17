@@ -23,6 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Lint the scripts
+        run: shellcheck --severity=warning scripts/*.sh
+
       - name: Deploy previous version
         run: ./scripts/deploy.sh ci-old
 

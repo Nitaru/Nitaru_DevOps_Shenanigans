@@ -20,6 +20,7 @@ load_state() {
   ACTIVE="none"
   BLUE_VERSION="none"
   GREEN_VERSION="none"
+  # shellcheck source=/dev/null  # the state file is generated at runtime
   [[ -f "$STATE_FILE" ]] && source "$STATE_FILE"
   return 0
 }
