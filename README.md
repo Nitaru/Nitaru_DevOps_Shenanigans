@@ -1,7 +1,7 @@
 # DevOps Hands On
 
-[![ci](https://github.com/Nitaru/Devops-Hands-On/actions/workflows/ci.yml/badge.svg)](https://github.com/Nitaru/Devops-Hands-On/actions/workflows/ci.yml)
-[![blue-green](https://github.com/Nitaru/Devops-Hands-On/actions/workflows/blue-green-deployment.yml/badge.svg)](https://github.com/Nitaru/Devops-Hands-On/actions/workflows/blue-green-deployment.yml)
+[![ci](https://github.com/Nitaru/Nitaru_DevOps_Shenanigans/actions/workflows/ci.yml/badge.svg)](https://github.com/Nitaru/Nitaru_DevOps_Shenanigans/actions/workflows/ci.yml)
+[![blue-green](https://github.com/Nitaru/Nitaru_DevOps_Shenanigans/actions/workflows/blue-green-deployment.yml/badge.svg)](https://github.com/Nitaru/Nitaru_DevOps_Shenanigans/actions/workflows/blue-green-deployment.yml)
 
 Hands-on DevOps projects from the [roadmap.sh DevOps project list](https://roadmap.sh/devops/projects).
 Each folder is a self-contained project with its own README, and each one runs locally with Docker Compose.
@@ -42,8 +42,8 @@ The monitoring test needs the `monitoring` project name and refuses to delete an
 Requirements: Docker with Compose v2. Some projects also need `make`, `bash`, `curl` and `openssl`.
 
 ```bash
-git clone https://github.com/Nitaru/Devops-Hands-On.git
-cd Devops-Hands-On/<project-folder>
+git clone https://github.com/Nitaru/Nitaru_DevOps_Shenanigans.git
+cd Nitaru_DevOps_Shenanigans/<project-folder>
 # then follow that project's README
 ```
 
