@@ -1,0 +1,38 @@
+# Keeps GitHub Actions, base images and dependencies current. Updates arrive as pull requests, so CI runs on each one.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: docker
+    directories:
+      - "/blue-green-deployment/app"
+      - "/monitoring-prometheus-grafana/app"
+      - "/monitoring-prometheus-grafana/custom-exporter"
+      - "/multi-service-docker/api"
+      - "/multi-service-docker/base/node-base"
+      - "/multi-service-docker/web"
+      - "/service-discovery/gateway"
+      - "/service-discovery/services"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: pip
+    directories:
+      - "/blue-green-deployment/app"
+      - "/monitoring-prometheus-grafana/custom-exporter"
+      - "/service-discovery/gateway"
+      - "/service-discovery/services"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directories:
+      - "/monitoring-prometheus-grafana/app"
+      - "/multi-service-docker/api"
+      - "/multi-service-docker/web"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
