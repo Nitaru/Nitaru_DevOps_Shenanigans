@@ -1,2 +1,2 @@
-prometheus-client==0.21.0
+prometheus-client==0.26.0
 redis==5.2.0
