@@ -1,5 +1,5 @@
 # Shared base image for the web build stage and the API service.
-FROM node:20-alpine
+FROM node:26-alpine
 
 # tini reaps zombie processes and forwards signals to node properly
 RUN apk add --no-cache tini wget \
