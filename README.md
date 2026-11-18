@@ -48,3 +48,7 @@ cd Nitaru_DevOps_Shenanigans/<project-folder>
 ```
 
 Several projects publish port `8080` (and some `3000`/`9090`), so run one at a time or stop the previous one with `docker compose down`. The ports of service-discovery, multi-service-docker and monitoring can be changed with environment variables (see each README).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
