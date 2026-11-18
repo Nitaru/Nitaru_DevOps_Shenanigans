@@ -1,2 +1,2 @@
 prometheus-client==0.21.0
-redis==5.2.0
+redis==8.1.0
